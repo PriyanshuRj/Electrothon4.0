@@ -54,6 +54,7 @@ def select_device(device='', batch_size=0, newline=True):
 
 IMG_FORMATS = ['bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp']
 
+
 def xywh2xyxy(x):
     # Convert nx4 boxes from [x, y, w, h] to [x1, y1, x2, y2] where xy1=top-left, xy2=bottom-right
     y = x.clone() if isinstance(x, torch.Tensor) else np.copy(x)
@@ -89,33 +90,23 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=
     if CIoU or DIoU or GIoU:
         cw = torch.max(b1_x2, b2_x2) - torch.min(b1_x1, b2_x1)  # convex (smallest enclosing box) width
         ch = torch.max(b1_y2, b2_y2) - torch.min(b1_y1, b2_y1)  # convex height
-        if CIoU or DIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
+        if CIoU or DIoU:  # Distance or Complete IoU 
             c2 = cw ** 2 + ch ** 2 + eps  # convex diagonal squared
             rho2 = ((b2_x1 + b2_x2 - b1_x1 - b1_x2) ** 2 +
                     (b2_y1 + b2_y2 - b1_y1 - b1_y2) ** 2) / 4  # center distance squared
-            if CIoU:  # https://github.com/Zzh-tju/DIoU-SSD-pytorch/blob/master/utils/box/box_utils.py#L47
+            if CIoU: 
                 v = (4 / math.pi ** 2) * torch.pow(torch.atan(w2 / h2) - torch.atan(w1 / h1), 2)
                 with torch.no_grad():
                     alpha = v / (v - iou + (1 + eps))
                 return iou - (rho2 / c2 + v * alpha)  # CIoU
             return iou - rho2 / c2  # DIoU
         c_area = cw * ch + eps  # convex area
-        return iou - (c_area - union) / c_area  # GIoU https://arxiv.org/pdf/1902.09630.pdf
+        return iou - (c_area - union) / c_area  # GIoU 
     return iou  # IoU
 
 
 def box_iou(box1, box2):
-    # https://github.com/pytorch/vision/blob/master/torchvision/ops/boxes.py
-    """
-    Return intersection-over-union (Jaccard index) of boxes.
-    Both sets of boxes are expected to be in (x1, y1, x2, y2) format.
-    Arguments:
-        box1 (Tensor[N, 4])
-        box2 (Tensor[M, 4])
-    Returns:
-        iou (Tensor[N, M]): the NxM matrix containing the pairwise
-            IoU values for every element in boxes1 and boxes2
-    """
+    
 
     def box_area(box):
         # box = 4xn
@@ -124,18 +115,14 @@ def box_iou(box1, box2):
     area1 = box_area(box1.T)
     area2 = box_area(box2.T)
 
-    # inter(N,M) = (rb(N,M,2) - lt(N,M,2)).clamp(0).prod(2)
+   
     inter = (torch.min(box1[:, None, 2:], box2[:, 2:]) - torch.max(box1[:, None, :2], box2[:, :2])).clamp(0).prod(2)
-    return inter / (area1[:, None] + area2 - inter)  # iou = inter / (area1 + area2 - inter)
+    return inter / (area1[:, None] + area2 - inter) 
 
 
 def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False, multi_label=False,
                         labels=(), max_det=300):
-    """Runs Non-Maximum Suppression (NMS) on inference results
-
-    Returns:
-         list of detections, on (n,6) tensor per image [xyxy, conf, cls]
-    """
+    
 
     nc = prediction.shape[2] - 5  # number of classes
     xc = prediction[..., 4] > conf_thres  # candidates
@@ -168,17 +155,14 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
             v[range(len(lb)), lb[:, 0].long() + 5] = 1.0  # cls
             x = torch.cat((x, v), 0)
 
-        # If none remain process next image
+        
         if not x.shape[0]:
             continue
 
         # Compute conf
         x[:, 5:] *= x[:, 4:5]  # conf = obj_conf * cls_conf
-
-        # Box (center x, center y, width, height) to (x1, y1, x2, y2)
         box = xywh2xyxy(x[:, :4])
 
-        # Detections matrix nx6 (xyxy, conf, cls)
         if multi_label:
             i, j = (x[:, 5:] > conf_thres).nonzero(as_tuple=False).T
             x = torch.cat((box[i], x[i, j + 5, None], j[:, None].float()), 1)
@@ -190,9 +174,6 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
         if classes is not None:
             x = x[(x[:, 5:6] == torch.tensor(classes, device=x.device)).any(1)]
 
-        # Apply finite constraint
-        # if not torch.isfinite(x).all():
-        #     x = x[torch.isfinite(x).all(1)]
 
         # Check shape
         n = x.shape[0]  # number of boxes
@@ -217,7 +198,7 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
 
         output[xi] = x[i]
         if (time.time() - t) > time_limit:
-            LOGGER.warning(f'WARNING: NMS time limit {time_limit}s exceeded')
+            print(f'WARNING: NMS time limit {time_limit}s exceeded')
             break  # time limit exceeded
 
     return output
@@ -282,7 +263,6 @@ def check_img_size(imgsz, s=32, floor=0):
 
 
 def check_file(file, suffix=''):
-    # Search/download file (if necessary) and return path
     check_suffix(file, suffix)  # optional
     file = str(file)  # convert to str()
     if Path(file).is_file() or file == '':  # exists
@@ -375,7 +355,6 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     stride,pt, names, onnx= model.stride,model.pt, model.names, model.onnx
     imgsz = check_img_size(imgsz, s=stride)  # check image size
 
-    # Dataloader
     if webcam:
         view_img = check_imshow()
         dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt)
@@ -383,7 +362,6 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     else:
         dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt)
         bs = 1  # batch_size
-
     # Run inference
     model.warmup(imgsz=(1 if pt else bs, 3, *imgsz), half=half)  # warmup
     dt, seen = [0.0, 0.0, 0.0], 0
@@ -396,17 +374,12 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         if len(im.shape) == 3:
             im = im[None]  # expand for batch dim
 
-
-
         # Inference
         visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
         pred = model(im, augment=augment, visualize=visualize)
 
-
-
         # NMS
         pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
-
 
         # Process predictions
         for i, det in enumerate(pred):  # per image
@@ -427,7 +400,6 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
-
                 # Print results
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
@@ -448,27 +420,22 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                         label = (f'{names[c]} {conf:.2f}')
                 
                         if(c == 0 or c==63 or c==67):
-                    
                             annotator.box_label(xyxy, label, color=colors(c, True))
                             if save_crop:
                                 save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
-
             # Stream results
             im0 = annotator.result()
             if view_img:
                 cv2.imshow(str(p), im0)
                 cv2.waitKey(1)  # 1 millisecond
-
             # Save results (image with detections)
             if save_img:
                 if dataset.mode == 'image':
                     cv2.imwrite(save_path, im0)
-
     # Print results
     if save_txt or save_img:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
         print(f"Results saved to { save_dir}{s}")
-
 
 def parse_opt():
     parser = argparse.ArgumentParser()
@@ -494,17 +461,14 @@ def parse_opt():
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--line-thickness', default=3, type=int, help='bounding box thickness (pixels)')
     parser.add_argument('--hide-labels', default=False, action='store_true', help='hide labels')
-    
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     return opt
 
-
 def main(opt):
     run(**vars(opt))
-
 
 if __name__ == "__main__":
     opt = parse_opt()

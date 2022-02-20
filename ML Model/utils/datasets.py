@@ -12,7 +12,6 @@ from multiprocessing.pool import Pool, ThreadPool
 from pathlib import Path
 from threading import Thread
 from zipfile import ZipFile
-
 import cv2
 import numpy as np
 import torch
@@ -20,17 +19,13 @@ import torch.nn.functional as F
 import yaml
 from PIL import ExifTags, Image
 from tqdm import tqdm
-
-from utils.augmentations import Albumentations, augment_hsv, copy_paste, letterbox, mixup, random_perspective
-from utils.general import (DATASETS_DIR, LOGGER, NUM_THREADS, check_dataset, check_requirements, check_yaml, clean_str,
-                           segments2boxes, xyn2xy, xywh2xyxy, xywhn2xyxy, xyxy2xywhn)
-from utils.torch_utils import torch_distributed_zero_first
+from utils.augmentations import  letterbox
+from utils.general import (check_requirements,  clean_str)
 
 # Get orientation exif tag
 for orientation in ExifTags.TAGS.keys():
     if ExifTags.TAGS[orientation] == 'Orientation':
         break
-
 
 def get_hash(paths):
     # Returns a single hash value of a list of paths (files or dirs)
@@ -38,7 +33,6 @@ def get_hash(paths):
     h = hashlib.md5(str(size).encode())  # hash sizes
     h.update(''.join(paths).encode())  # hash paths
     return h.hexdigest()  # return hash
-
 
 def exif_size(img):
     # Returns exif-corrected PIL size
@@ -54,15 +48,7 @@ def exif_size(img):
 
     return s
 
-
 def exif_transpose(image):
-    """
-    Transpose a PIL image accordingly if it has an EXIF Orientation tag.
-    Inplace version of https://github.com/python-pillow/Pillow/blob/master/src/PIL/ImageOps.py exif_transpose()
-
-    :param image: The image to transpose.
-    :return: An image.
-    """
     exif = image.getexif()
     orientation = exif.get(0x0112, 1)  # default 1
     if orientation > 1:
@@ -80,7 +66,6 @@ def exif_transpose(image):
             image.info["exif"] = exif.tobytes()
     return image
 
-
 class LoadImages:
     # YOLOv5 image/video dataloader, i.e. `python detect.py --source image.jpg/vid.mp4`
     def __init__(self, path, img_size=640, stride=32, auto=True):
@@ -93,11 +78,9 @@ class LoadImages:
             files = [p]  # files
         else:
             raise Exception(f'ERROR: {p} does not exist')
-
         images = [x for x in files if x.split('.')[-1].lower() in IMG_FORMATS]
         videos = [x for x in files if x.split('.')[-1].lower() in VID_FORMATS]
         ni, nv = len(images), len(videos)
-
         self.img_size = img_size
         self.stride = stride
         self.files = images + videos
@@ -153,12 +136,10 @@ class LoadImages:
         img = np.ascontiguousarray(img)
 
         return path, img, img0, self.cap, s
-
     def new_video(self, path):
         self.frame = 0
         self.cap = cv2.VideoCapture(path)
         self.frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
     def __len__(self):
         return self.nf  # number of files
 
@@ -168,13 +149,11 @@ class LoadStreams:
         self.mode = 'stream'
         self.img_size = img_size
         self.stride = stride
-
         if os.path.isfile(sources):
             with open(sources) as f:
                 sources = [x.strip() for x in f.read().strip().splitlines() if len(x.strip())]
         else:
             sources = [sources]
-
         n = len(sources)
         self.imgs, self.fps, self.frames, self.threads = [None] * n, [0] * n, [0] * n, [None] * n
         self.sources = [clean_str(x) for x in sources]  # clean source names for later
@@ -223,7 +202,6 @@ class LoadStreams:
                     self.imgs[i] = np.zeros_like(self.imgs[i])
                     cap.open(stream)  # re-open stream if signal was lost
             time.sleep(1 / self.fps[i])  # wait time
-
     def __iter__(self):
         self.count = -1
         return self
@@ -244,9 +222,7 @@ class LoadStreams:
         # Convert
         img = img[..., ::-1].transpose((0, 3, 1, 2))  # BGR to RGB, BHWC to BCHW
         img = np.ascontiguousarray(img)
-
         return self.sources, img, img0, None, ''
-
     def __len__(self):
         return len(self.sources)  # 1E12 frames = 32 streams at 30 FPS for 30 years
 

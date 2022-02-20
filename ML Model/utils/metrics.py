@@ -11,26 +11,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-
 def fitness(x):
     # Model fitness as a weighted combination of metrics
     w = [0.0, 0.0, 0.1, 0.9]  # weights for [P, R, mAP@0.5, mAP@0.5:0.95]
     return (x[:, :4] * w).sum(1)
 
-
 def ap_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir='.', names=(), eps=1e-16):
-    """ Compute the average precision, given the recall and precision curves.
-    Source: https://github.com/rafaelpadilla/Object-Detection-Metrics.
-    # Arguments
-        tp:  True positives (nparray, nx1 or nx10).
-        conf:  Objectness value from 0-1 (nparray).
-        pred_cls:  Predicted object classes (nparray).
-        target_cls:  True object classes (nparray).
-        plot:  Plot precision-recall curve at mAP@0.5
-        save_dir:  Plot save directory
-    # Returns
-        The average precision as computed in py-faster-rcnn.
-    """
+
 
     # Sort by objectness
     i = np.argsort(-conf)
@@ -78,7 +65,6 @@ def ap_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir='.', names
         plot_mc_curve(px, f1, Path(save_dir) / 'F1_curve.png', names, ylabel='F1')
         plot_mc_curve(px, p, Path(save_dir) / 'P_curve.png', names, ylabel='Precision')
         plot_mc_curve(px, r, Path(save_dir) / 'R_curve.png', names, ylabel='Recall')
-
     i = f1.mean(0).argmax()  # max F1 index
     p, r, f1 = p[:, i], r[:, i], f1[:, i]
     tp = (r * nt).round()  # true positives
@@ -87,14 +73,6 @@ def ap_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir='.', names
 
 
 def compute_ap(recall, precision):
-    """ Compute the average precision, given the recall and precision curves
-    # Arguments
-        recall:    The recall curve (list)
-        precision: The precision curve (list)
-    # Returns
-        Average precision, precision curve, recall curve
-    """
-
     # Append sentinel values to beginning and end
     mrec = np.concatenate(([0.0], recall, [1.0]))
     mpre = np.concatenate(([1.0], precision, [0.0]))
@@ -113,7 +91,6 @@ def compute_ap(recall, precision):
 
     return ap, mpre, mrec
 
-
 class ConfusionMatrix:
     # Updated version of https://github.com/kaanakan/object_detection_confusion_matrix
     def __init__(self, nc, conf=0.25, iou_thres=0.45):
@@ -123,15 +100,6 @@ class ConfusionMatrix:
         self.iou_thres = iou_thres
 
     def process_batch(self, detections, labels):
-        """
-        Return intersection-over-union (Jaccard index) of boxes.
-        Both sets of boxes are expected to be in (x1, y1, x2, y2) format.
-        Arguments:
-            detections (Array[N, 6]), x1, y1, x2, y2, conf, class
-            labels (Array[M, 5]), class, x1, y1, x2, y2
-        Returns:
-            None, updates confusion matrix accordingly
-        """
         detections = detections[detections[:, 4] > self.conf]
         gt_classes = labels[:, 0].int()
         detection_classes = detections[:, 5].int()
@@ -156,7 +124,6 @@ class ConfusionMatrix:
                 self.matrix[detection_classes[m1[j]], gc] += 1  # correct
             else:
                 self.matrix[self.nc, gc] += 1  # background FP
-
         if n:
             for i, dc in enumerate(detection_classes):
                 if not any(m1 == i):

@@ -12,10 +12,8 @@ def export_formats():
     return pd.DataFrame(x, columns=['Format', 'Argument', 'Suffix'])
 
 class DetectMultiBackend(nn.Module):
-    # YOLOv5 MultiBackend class for python inference on various backends
     def __init__(self, weights='yolov5s.pt', device=None, dnn=False, data=None):
         # from models.experimental import attempt_download, attempt_load  # scoped to avoid circular import
-
         super().__init__()
         w = str(weights[0] if isinstance(weights, list) else weights)
         pt,  onnx = self.model_type(w)  # get backend
@@ -24,15 +22,11 @@ class DetectMultiBackend(nn.Module):
         if data:  # data.yaml path (optional)
             with open(data, errors='ignore') as f:
                 names = yaml.safe_load(f)['names']  # class names
-
         if onnx:  # ONNX Runtime
-
             cuda = torch.cuda.is_available()
-            
             import onnxruntime
             providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if cuda else ['CPUExecutionProvider']
             session = onnxruntime.InferenceSession(w, providers=providers)
-
         self.__dict__.update(locals())  # assign all variables to self
 
     def forward(self, im, augment=False, visualize=False, val=False):
@@ -54,4 +48,3 @@ class DetectMultiBackend(nn.Module):
         suffixes = list(export_formats().Suffix)  # export suffixes
         pt, onnx = (s in p for s in suffixes)
         return pt, onnx
-
