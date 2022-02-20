@@ -21,4 +21,3 @@ To use the ML model run the comands in terminal
 `pip install -r repuernmenst.txt`
 `py detect.py --source <imge address/ 0 for webcam feed> --weights weights.onnx --conf 0.5`
 
-## Gallery 
